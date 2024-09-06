@@ -1,0 +1,109 @@
+-- Blox Fruits 350 Mastery Auto-Farming Script with Flying at 200 Studs per Frame
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local tool = player.Backpack:FindFirstChild("YourToolNameHere") or character:FindFirstChild("YourToolNameHere") -- Replace with the tool/fruit you want to level up
+
+-- Target mastery level
+local targetMastery = 350
+-- Distance to start flying
+local startFlyingDistance = 200 -- Start flying at 200 studs away
+-- Distance to stop flying and teleport
+local teleportDistance = 50 -- Stop flying and teleport at 50 studs away
+-- Flying speed (studs per frame)
+local flySpeed = 200 -- Fly in increments of 200 studs
+
+-- Function to check mastery level of the tool/fruit
+function getMasteryLevel(tool)
+    local masteryValue = tool:FindFirstChild("Mastery") -- Assuming there's a Mastery value attached to the tool
+    return masteryValue and masteryValue.Value or 0
+end
+
+-- Function to auto-attack NPCs to gain mastery
+function autoFarmMastery()
+    while true do
+        -- Get the current mastery level of the tool/fruit
+        local currentMastery = getMasteryLevel(tool)
+        
+        -- If the mastery is greater than or equal to the target mastery (350), stop farming
+        if currentMastery >= targetMastery then
+            print("Mastery target of 350 reached!")
+            break
+        end
+        
+        -- Find the nearest enemy to farm mastery
+        local target = findClosestNPC()
+        if target then
+            -- Check the distance to the target
+            local distance = (target.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).magnitude
+            
+            -- If the player is far from the target, start flying toward the enemy
+            if distance > startFlyingDistance then
+                flyToTarget(target.Position)
+            elseif distance > teleportDistance then
+                -- Continue flying in smaller increments until within teleport range
+                flyToTarget(target.Position)
+            else
+                -- If the player is close enough, teleport to the enemy and start attacking
+                teleportTo(target.Position)
+                attackNPC(target) -- Attack the NPC to gain mastery
+            end
+        end
+        
+        wait(0.1) -- Wait a bit to avoid overloading the server
+    end
+end
+
+-- Function to find the nearest NPC
+function findClosestNPC()
+    local closestNPC = nil
+    local shortestDistance = math.huge
+    for _, npc in pairs(game.Workspace.Enemies:GetChildren()) do -- Assumes NPCs are in a folder called "Enemies"
+        local distance = (npc.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).magnitude
+        if distance < shortestDistance then
+            closestNPC = npc
+            shortestDistance = distance
+        end
+    end
+    return closestNPC
+end
+
+-- Function to fly the player to a target position in 200-stud increments
+function flyToTarget(destination)
+    local characterPosition = player.Character.HumanoidRootPart.Position
+    local direction = (destination - characterPosition).unit -- Unit vector direction toward the target
+    
+    -- Move the player in 200-stud increments towards the destination
+    while (destination - player.Character.HumanoidRootPart.Position).magnitude > teleportDistance do
+        characterPosition = player.Character.HumanoidRootPart.Position
+        local nextPosition = characterPosition + (direction * flySpeed)
+        
+        -- Set the next position above ground to simulate flying
+        player.Character.HumanoidRootPart.CFrame = CFrame.new(nextPosition + Vector3.new(0, 20, 0)) -- Flying 20 studs above ground
+        
+        wait(0.2) -- Short delay to simulate flying movement in steps
+    end
+end
+
+-- Function to teleport the player to a target position (if within teleport distance)
+function teleportTo(position)
+    player.Character.HumanoidRootPart.CFrame = CFrame.new(position + Vector3.new(0, 3, 0)) -- Teleports slightly above the ground to avoid glitches
+end
+
+-- Function to attack the NPC and gain mastery
+function attackNPC(target)
+    if tool then
+        -- Equip the tool if it's not already equipped
+        player.Character.Humanoid:EquipTool(tool)
+        
+        -- Attack the NPC repeatedly
+        repeat
+            tool:Activate() -- Simulate using the tool (attack with sword, punch, or fruit ability)
+            wait(0.5)       -- Wait a bit before attacking again to simulate cooldown
+        until target.Humanoid.Health <= 0 or getMasteryLevel(tool) >= targetMastery
+    end
+end
+
+-- Start auto-farming mastery
+autoFarmMastery()
